@@ -43,6 +43,7 @@ fi
 # print total submissions marked.
 fileCount=0 
 goodGcc=0 # expected gcc return int if compilation no error
+noDiff=0 # expected diff return int if identical
 for i in ./subs/*/; do
     score=0
     let fileCount=fileCount+1
@@ -53,7 +54,8 @@ for i in ./subs/*/; do
     else
         for j in ./ref/*.in; do
             ${i}fun < $j > ${i}.in.out
-            if [[ -z $(diff ${j}.out ${i}.in.out) ]]; then # if identical to expected output
+            diff ${j}.out ${i}.in.out
+            if [[ $? -eq $noDiff ]]; then # if identical to expected output
                 score=$(( $score == $n ? score : score + 1 ))
             fi
         done

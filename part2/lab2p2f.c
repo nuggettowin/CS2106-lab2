@@ -13,7 +13,7 @@ int main() {
     int pipe_fds[2]; // 0 = read, 1 = write
     int pipe_res = pipe(pipe_fds);
     if (pipe_res == -1) {
-        perror("Error when pipe");
+        perror("Error when pipe setup");
         return EXIT_FAILURE;
     }
 
@@ -23,38 +23,34 @@ int main() {
         perror("Failed first fork");
         return EXIT_FAILURE;
     case 0: // child
-        printf("Child 1 forked\n");
-
-        // redirect output 
-        close(pipe_fds[0]);
+        // redirect output
+        int close_slow_in_res = close(pipe_fds[0]);
+        if (close_slow_in_res == -1) {
+            perror("Error closing read for slow");
+            exit(EXIT_FAILURE);
+        }
         int change_slow_out_fd_res = dup2(pipe_fds[1], STDOUT_FILENO);
         if (change_slow_out_fd_res == -1) {
             perror("Error converting stdout to talk file");
             exit(EXIT_FAILURE);
         }
 
-        int res = execl("./slow", "slow", "5", (char *) NULL);
+        int res = execl("./slow", "slow", "5", (char *)NULL);
         if (res == -1) {
             perror("Error caling exec on slow");
         }
         exit(EXIT_FAILURE);
     default: // parent
         pid_t wait1_res = wait(NULL);
-        if  (wait1_res == -1) {
+        if (wait1_res == -1) {
             perror("Error waiting 1 fork");
             return EXIT_FAILURE;
         }
-        printf("Child exited\n");
-    }
 
-    close(pipe_fds[1]);
-    pid_t pid2 = fork();
-    switch (pid2) {
-    case -1:
-        perror("Failed second fork");
-        return EXIT_FAILURE;
-    case 0: // child
-        printf("Child 2 forked\n");
+        int close_slow_out_res = close(pipe_fds[1]);
+        if (close_slow_out_res == -1) {
+            perror("Error closing write after slow");
+        }
 
         // redirect stdin
         int change_talk_in_fd_res = dup2(pipe_fds[0], STDIN_FILENO);
@@ -64,10 +60,9 @@ int main() {
         }
 
         // redirect stdout
-        int res_fd = open("./results.out", 
-                O_WRONLY | O_CREAT,
-                0644
-            ); 
+        int res_fd = open("./results.out",
+                          O_WRONLY | O_CREAT,
+                          0644);
         if (res_fd == -1) {
             perror("Cannot open results file");
             return EXIT_FAILURE;
@@ -78,25 +73,17 @@ int main() {
             exit(EXIT_FAILURE);
         }
 
-        int res = execl("./talk", "talk", (char *) NULL);
+        int res = execl("./talk", "talk", (char *)NULL);
         if (res == -1) {
             perror("Error caling exec on talk");
             exit(EXIT_FAILURE);
         }
-    default: // parent
-        pid_t wait2_res = wait(NULL);
 
-        close(pipe_fds[0]);
+        //
+        // Add code here to pipe from ./slow 5 to ./talk and redirect
+        // output of ./talk to results.out
+        // I.e. your program should do the equivalent of ./slow 5 | talk > results.out
+        // WITHOUT using | and > from the shell.
+        // Look at how we did < and > and | in the previous parts of this lab, and do the same!
     }
-
-    return EXIT_SUCCESS;
-
-    //
-    // Add code here to pipe from ./slow 5 to ./talk and redirect
-    // output of ./talk to results.out
-    // I.e. your program should do the equivalent of ./slow 5 | talk > results.out
-    // WITHOUT using | and > from the shell.
-    // Look at how we did < and > and | in the previous parts of this lab, and do the same!
-
 }
-

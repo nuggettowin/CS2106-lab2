@@ -12,9 +12,15 @@ if [[ $# -gt $allowed_arg_count || $# -lt $allowed_arg_count ]]; then
     exit -1
 fi
 # Delete temporary files
+rm -f ./results.out
 rm -f ./ref/*.in.out
+rm -f ./ref/fun
+for dir in ./subs/*/; do
+    rm -f ${dir}.in.out
+    rm -f ${dir}fun
+done
 
-# Compile the reference program
+# Compile the reference program; successful compile assumed
 gcc ./ref/*.c -o ./ref/fun
 
 n=0
@@ -28,39 +34,29 @@ done
 if [[ $1 -lt $n ]]; then
     n=$1
 fi
+
 # Now mark submissions
-
-#
-# Note: See Lab02Qn.pdf for format of output file. Marks will be deducted for missing elements.
-#
-
-# Iterate over every submission directory
-    # Compile C code
-    # Print compile error message to output file (if any)
-    # Generate output from C code using *.in files in /ref
-    # Compare with reference output files  and award 1 mark if they are identical
-    # print score for student
-# print total submissions marked.
 fileCount=0 
 goodGcc=0 # expected gcc return int if compilation no error
 noDiff=0 # expected diff return int if identical
-for i in ./subs/*/; do
+for studentDir in ./subs/*/; do
     score=0
     let fileCount=fileCount+1
-    gcc ${i}*.c -o ${i}fun
+    gcc ${studentDir}*.c -o ${studentDir}fun
 
     if [[ $? -ne $goodGcc ]]; then
-        echo "Directory $(basename ${i}) has a compile error" >> $res
+        echo "Directory $(basename ${studentDir}) has a compile error" >> $res
     else
-        for j in ./ref/*.in; do
-            ${i}fun < $j > ${i}.in.out
-            diff ${j}.out ${i}.in.out
+        # run through student's prog with testcase, check for difference in result
+        for test in ./ref/*.in; do
+            ${studentDir}fun < $test > ${studentDir}.in.out
+            diff ${test}.out ${studentDir}.in.out
             if [[ $? -eq $noDiff ]]; then # if identical to expected output
                 score=$(( $score == $n ? score : score + 1 ))
             fi
         done
     fi
 
-    echo "Directory $(basename ${i}) score $score / $n" >> $res
+    echo "Directory $(basename ${studentDir}) score $score / $n" >> $res
 done
 echo -e -n "\nProcessed $fileCount files." >> $res
